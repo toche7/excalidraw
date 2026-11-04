@@ -193,7 +193,7 @@ export const THAI_FALLBACK_FONTS = [
 
 export const getThaiFallbackFont = (
   fontFamily: number,
-): (typeof THAI_FALLBACK_FONTS)[number] | null => {
+): typeof THAI_FALLBACK_FONTS[number] | null => {
   switch (fontFamily) {
     case FONT_FAMILY.Excalifont:
       return THAI_HAND_DRAWN_FALLBACK_FONT;
@@ -207,7 +207,7 @@ export const getThaiFallbackFont = (
 export const getFontFamilyFallbacks = (
   fontFamily: number,
 ): Array<
-  keyof typeof FONT_FAMILY_FALLBACKS | (typeof THAI_FALLBACK_FONTS)[number]
+  keyof typeof FONT_FAMILY_FALLBACKS | typeof THAI_FALLBACK_FONTS[number]
 > => {
   const genericFallbackFont = getGenericFontFamilyFallback(fontFamily);
 
