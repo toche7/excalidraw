@@ -5,6 +5,7 @@ import {
   CJK_HAND_DRAWN_FALLBACK_FONT,
   WINDOWS_EMOJI_FALLBACK_FONT,
   getFontFamilyFallbacks,
+  getThaiFallbackFont,
   FONT_SIZES,
 } from "@excalidraw/common";
 import { getContainerElement } from "@excalidraw/element";
@@ -40,11 +41,15 @@ import { ExcalifontFontFaces } from "./Excalifont";
 import { HelveticaFontFaces } from "./Helvetica";
 import { LiberationFontFaces } from "./Liberation";
 import { LilitaFontFaces } from "./Lilita";
+import { MaliFontFaces } from "./Mali";
+import { NotoSansThaiFontFaces } from "./NotoSansThai";
 import { NunitoFontFaces } from "./Nunito";
 import { VirgilFontFaces } from "./Virgil";
 import { XiaolaiFontFaces } from "./Xiaolai";
 
 /** warned once per process, not per export (e.g. on a server) */
+const RE_THAI = /[\u0E00-\u0E7F]/;
+
 let warnedNoFontFaceSet = false;
 
 /** a worker's own font set (`WorkerGlobalScope.fonts`), if this is one */
@@ -252,6 +257,26 @@ export class Fonts {
       }
     }
 
+    // Thai text in a family with a Thai fallback needs the fallback font faces embedded as well
+    for (const family of [...families]) {
+      const thaiFallback = getThaiFallbackFont(family);
+      const characters = Fonts.getCharacters(charsPerFamily, family);
+
+      if (!thaiFallback || !RE_THAI.test(characters)) {
+        continue;
+      }
+
+      const fallbackFamily = FONT_FAMILY[thaiFallback];
+      charsPerFamily[fallbackFamily] = new Set([
+        ...(charsPerFamily[fallbackFamily] ?? []),
+        ...characters,
+      ]);
+
+      if (!families.includes(fallbackFamily)) {
+        families.unshift(fallbackFamily);
+      }
+    }
+
     // don't trigger hundreds of concurrent requests (each performing fetch, creating a worker, etc.),
     // instead go three requests at a time, in a controlled manner, without completely blocking the main thread
     // and avoiding potential issues such as rate limits
@@ -450,6 +475,8 @@ export class Fonts {
     // used for server-side pdf & png export instead of helvetica (technically does not need metrics, but kept in for consistency)
     init("Liberation Sans", ...LiberationFontFaces);
     init("Lilita One", ...LilitaFontFaces);
+    init("Mali", ...MaliFontFaces);
+    init("Noto Sans Thai", ...NotoSansThaiFontFaces);
     init("Nunito", ...NunitoFontFaces);
     init("Virgil", ...VirgilFontFaces);
 

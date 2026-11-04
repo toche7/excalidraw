@@ -680,7 +680,12 @@ const drawElementOnCanvas = (
             element.strokeColor,
             renderConfig.theme === THEME.DARK,
           );
-          context.textAlign = element.textAlign as CanvasTextAlign;
+          // align manually for LTR text as Safari doesn't reliably honor
+          // canvas `textAlign` for complex scripts (e.g. Thai)
+          const alignManually = !rtl && element.textAlign !== "left";
+          context.textAlign = alignManually
+            ? "left"
+            : (element.textAlign as CanvasTextAlign);
 
           // Canvas does not support multiline text by default
           const lines = element.text.replace(/\r\n?/g, "\n").split("\n");
@@ -704,9 +709,16 @@ const drawElementOnCanvas = (
           );
 
           for (let index = 0; index < lines.length; index++) {
+            const lineWidth = alignManually
+              ? context.measureText(lines[index]).width
+              : 0;
             context.fillText(
               lines[index],
-              horizontalOffset,
+              element.textAlign === "center"
+                ? horizontalOffset - lineWidth / 2
+                : element.textAlign === "right" && alignManually
+                ? horizontalOffset - lineWidth
+                : horizontalOffset,
               index * lineHeightPx + verticalOffset,
             );
           }

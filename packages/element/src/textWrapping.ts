@@ -386,7 +386,63 @@ export const parseTokens = (line: string) => {
   // normalizing to single-codepoint composed chars due to canonical equivalence
   // of multi-codepoint versions for chars like č, で (~ so that we don't break a line in between c and ˇ)
   // filtering due to multi-codepoint chars like 👨‍👩‍👧‍👦, 👩🏽‍🦰
-  return line.normalize("NFC").split(breakLineRegex).filter(Boolean);
+  return line
+    .normalize("NFC")
+    .split(breakLineRegex)
+    .filter(Boolean)
+    .flatMap(splitThaiToWords);
+};
+
+const THAI_REGEX = /[\u0E00-\u0E7F]/;
+
+let cachedThaiWordSegmenter: Intl.Segmenter | null | undefined;
+let cachedGraphemeSegmenter: Intl.Segmenter | null | undefined;
+
+const getSegmenter = (
+  cached: Intl.Segmenter | null | undefined,
+  locale: string | undefined,
+  granularity: "word" | "grapheme",
+) => {
+  if (cached !== undefined) {
+    return cached;
+  }
+  try {
+    return typeof Intl !== "undefined" && "Segmenter" in Intl
+      ? new Intl.Segmenter(locale, { granularity })
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Thai is written without spaces, so the whole sentence would otherwise be
+ * a single token. Split it on dictionary word boundaries instead.
+ */
+const splitThaiToWords = (token: string): string[] => {
+  if (!THAI_REGEX.test(token)) {
+    return [token];
+  }
+  cachedThaiWordSegmenter = getSegmenter(cachedThaiWordSegmenter, "th", "word");
+  if (!cachedThaiWordSegmenter) {
+    return [token];
+  }
+  return Array.from(cachedThaiWordSegmenter.segment(token), (s) => s.segment);
+};
+
+/**
+ * Splits into user-perceived characters, so that combining marks
+ * (e.g. Thai vowels & tone marks) are never separated from their base char.
+ */
+const splitToGraphemes = (word: string): string[] => {
+  cachedGraphemeSegmenter = getSegmenter(
+    cachedGraphemeSegmenter,
+    undefined,
+    "grapheme",
+  );
+  return cachedGraphemeSegmenter
+    ? Array.from(cachedGraphemeSegmenter.segment(word), (s) => s.segment)
+    : Array.from(word);
 };
 
 /**
@@ -601,7 +657,7 @@ const wrapWord = (
   satisfiesWordInvariant(word);
 
   const lines: WrappedTextLine[] = [];
-  const chars = Array.from(word);
+  const chars = splitToGraphemes(word);
 
   let currentLine = "";
   let currentLineStart = wordStart;
@@ -612,7 +668,11 @@ const wrapWord = (
   for (const char of chars) {
     const charStart = offset;
     const charEnd = charStart + char.length;
-    const _charWidth = charWidth.calculate(char, font, env);
+    // the char width cache is keyed by the first code unit only, so it can't be used for multi-codepoint graphemes
+    const _charWidth =
+      char.length === 1
+        ? charWidth.calculate(char, font, env)
+        : getLineWidth(char, font, env);
     const testLineWidth = currentLineWidth + _charWidth;
 
     if (testLineWidth <= maxWidth) {

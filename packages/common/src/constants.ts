@@ -131,6 +131,8 @@ export const FONT_SIZES = {
 
 export const CJK_HAND_DRAWN_FALLBACK_FONT = "Xiaolai";
 export const WINDOWS_EMOJI_FALLBACK_FONT = "Segoe UI Emoji";
+export const THAI_HAND_DRAWN_FALLBACK_FONT = "Mali";
+export const THAI_NORMAL_FALLBACK_FONT = "Noto Sans Thai";
 
 /**
  * // TODO: shouldn't be really `const`, likely neither have integers as values, due to value for the custom fonts, which should likely be some hash.
@@ -151,6 +153,8 @@ export const FONT_FAMILY = {
   "Comic Shanns": 8,
   "Liberation Sans": 9,
   Assistant: 10,
+  "Noto Sans Thai": 11,
+  Mali: 12,
 };
 
 // Segoe UI Emoji fails to properly fallback for some glyphs: ∞, ∫, ≠
@@ -182,20 +186,48 @@ export function getGenericFontFamilyFallback(
   }
 }
 
+export const THAI_FALLBACK_FONTS = [
+  THAI_HAND_DRAWN_FALLBACK_FONT,
+  THAI_NORMAL_FALLBACK_FONT,
+] as const;
+
+export const getThaiFallbackFont = (
+  fontFamily: number,
+): (typeof THAI_FALLBACK_FONTS)[number] | null => {
+  switch (fontFamily) {
+    case FONT_FAMILY.Excalifont:
+      return THAI_HAND_DRAWN_FALLBACK_FONT;
+    case FONT_FAMILY.Nunito:
+      return THAI_NORMAL_FALLBACK_FONT;
+    default:
+      return null;
+  }
+};
+
 export const getFontFamilyFallbacks = (
   fontFamily: number,
-): Array<keyof typeof FONT_FAMILY_FALLBACKS> => {
+): Array<
+  keyof typeof FONT_FAMILY_FALLBACKS | (typeof THAI_FALLBACK_FONTS)[number]
+> => {
   const genericFallbackFont = getGenericFontFamilyFallback(fontFamily);
+
+  const thaiFallbackFont = getThaiFallbackFont(fontFamily);
+  const thaiFallbacks = thaiFallbackFont ? [thaiFallbackFont] : [];
 
   switch (fontFamily) {
     case FONT_FAMILY.Excalifont:
       return [
         CJK_HAND_DRAWN_FALLBACK_FONT,
+        ...thaiFallbacks,
         genericFallbackFont,
         WINDOWS_EMOJI_FALLBACK_FONT,
       ];
     default:
-      return [genericFallbackFont, WINDOWS_EMOJI_FALLBACK_FONT];
+      return [
+        ...thaiFallbacks,
+        genericFallbackFont,
+        WINDOWS_EMOJI_FALLBACK_FONT,
+      ];
   }
 };
 
