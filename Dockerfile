@@ -6,7 +6,7 @@ COPY . .
 
 # do not ignore optional dependencies:
 # Error: Cannot find module @rollup/rollup-linux-x64-gnu
-RUN --mount=type=cache,target=/root/.cache/yarn \
+RUN --mount=type=cache,id=s/ecb70af3-171f-48cc-96a7-57c701473dc8-/root/.cache/yarn,target=/root/.cache/yarn \
     npm_config_target_arch=${TARGETARCH} yarn --frozen-lockfile --network-timeout 600000
 
 ARG NODE_ENV=production
